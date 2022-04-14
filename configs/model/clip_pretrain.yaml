@@ -1,0 +1,18 @@
+_target_: src.models.clip_module.CLIPModule
+embed_dim: 512
+transformer_embed_dim: 768
+max_len: 32 # Maximum length of text
+text_model: "distilbert-base-multilingual-cased"
+
+# net:
+#   _target_: src.models.components.clip.CLIP
+#   embed_dim: 512
+#   image_resolution: 224
+#   vision_layers: 12
+#   vision_width: 768
+#   vision_patch_size: 32
+#   context_length: 77
+#   vocab_size: 49408
+#   transformer_width: 512
+#   transformer_heads: 8
+#   transformer_layers: 12
