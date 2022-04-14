@@ -144,5 +144,6 @@ configs/local/default.yaml
 data/
 logs/
 wandb/
+pretrained/
 .env
 .autoenv
