@@ -1,6 +1,6 @@
 _target_: src.datamodules.coco_datamodule.COCODataModule
 
-data_dir: ${data_dir}/COCO # data_dir is specified in config.yaml
+# data_dir: ${data_dir}/COCO
 batch_size: 64
 num_workers: 4
 pin_memory: True

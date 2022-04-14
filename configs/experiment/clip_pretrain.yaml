@@ -39,6 +39,7 @@ model:
 #     transformer_layers: 12
 
 datamodule:
+  data_dir: /workspace/data/coco
   batch_size: 64
   train_split: 0.8
   num_workers: 4
