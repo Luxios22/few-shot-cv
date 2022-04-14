@@ -9,17 +9,18 @@ from transformers import AutoModel, AutoTokenizer, BertTokenizer
 
 
 class Tokenizer:
-    def __init__(self, tokenizer: BertTokenizer) -> None:
+    def __init__(self, tokenizer: BertTokenizer, max_len: int) -> None:
         self.tokenizer = tokenizer
+        self.max_len = max_len
 
     def __call__(self, x: str) -> AutoTokenizer:
         return self.tokenizer(
-            x, max_length=self.hparams.max_len, truncation=True, padding="max_length", return_tensors="pt"
+            x, max_length=self.max_len, truncation=True, padding="max_length", return_tensors="pt"
         )
 
     def decode(self, x: Dict[str, torch.LongTensor]):
         return [self.tokenizer.decode(sentence[:sentence_len]) for sentence, sentence_len in 
-                zip(x["input_ids"], x["attention_mask"].sum(axis=-1))]
+                zip(x["input_ids"], target["attention_mask"].sum(axis=-1))]
 
 class Projection(nn.Module):
     def __init__(self, d_in: int, d_out: int, p: float=0.5) -> None:
@@ -53,10 +54,10 @@ class VisionEncoder(nn.Module):
         return projected_vec / projection_len
 
 class TextEncoder(nn.Module):
-    def __init__(self, d_out: int) -> None:
+    def __init__(self, d_out: int, hparams) -> None:
         super().__init__()
-        self.base = AutoModel.from_pretrained(self.hparams.text_model)
-        self.projection = Projection(self.hparams.transformer_embed_dim, d_out)
+        self.base = AutoModel.from_pretrained(hparams.text_model)
+        self.projection = Projection(hparams.transformer_embed_dim, d_out)
         for p in self.base.parameters():
             p.requires_grad = False
 
@@ -87,20 +88,25 @@ def metrics(similarity: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
     return img_acc, cap_acc
 
 class CLIPModule(pl.LightningModule):
-    def __init__(self, lr: float = 1e-3) -> None:
+    def __init__(self, lr: float = 1e-3, 
+    embed_dim=512, 
+    transformer_embed_dim=768, 
+    max_len=32, 
+    text_model="distilbert-base-multilingual-cased") -> None:
         super().__init__()
         # this line allows to access init params with 'self.hparams' attribute
         # it also ensures init params will be stored in ckpt
         self.save_hyperparameters(logger=False)
         
         self.vision_encoder = VisionEncoder(self.hparams.embed_dim)
-        self.caption_encoder = TextEncoder(self.hparams.embed_dim)
-        self.tokenizer = Tokenizer(AutoTokenizer.from_pretrained(self.hparams.text_model))
+        self.caption_encoder = TextEncoder(self.hparams.embed_dim, self.hparams)
+        self.tokenizer = Tokenizer(AutoTokenizer.from_pretrained(self.hparams.text_model), self.hparams.max_len)
         self.lr = lr
        
     def common_step(self, batch: Tuple[torch.Tensor, List[str]]) -> torch.Tensor:
         images, text = batch
         device = images.device
+        print(type(images),type(text), text.items())
         text_dev = {k: v.to(device) for k, v in self.tokenizer(text).items()}
         image_embed = self.vision_encoder(images)
         caption_embed = self.caption_encoder(text_dev)

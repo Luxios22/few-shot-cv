@@ -1,13 +1,14 @@
-from typing import Optional, Tuple
+from typing import Optional
 import os
 import random
+
 from tensorflow.keras.utils import get_file
 from pytorch_lightning import LightningDataModule
 from torch.utils.data import Dataset, DataLoader, random_split
 from torchvision.transforms import transforms
 from torchvision.datasets import CocoCaptions
 from transformers import AutoTokenizer
-from src.models.clip_module import Tokenizer, TEXT_MODEL
+from src.models.clip_module import Tokenizer
 
 
 class COCODataModule(LightningDataModule):
@@ -30,10 +31,12 @@ class COCODataModule(LightningDataModule):
     def __init__(
         self,
         data_dir: str = "data/COCO",
-        train_val_test_split: Tuple[int, int, int] = (0.8, 0.1, 0.1),
+        train_split: int = 0.8,
         batch_size: int = 64,
         num_workers: int = 4,
         pin_memory: bool = True,
+        max_len=32, 
+        text_model="distilbert-base-multilingual-cased"
     ):
         super().__init__()
 
@@ -46,11 +49,6 @@ class COCODataModule(LightningDataModule):
                                 transforms.Normalize(mean=(0.485, 0.456, 0.406), 
                                                         std=(0.229, 0.224, 0.225))
                                 ])
-        # inv_tfm = transforms.Compose([ transforms.Normalize(mean = [ 0., 0., 0. ],
-        #                                                     std = [ 1/0.229, 1/0.224, 1/0.225 ]),
-        #                                 transforms.Normalize(mean = [ -0.485, -0.456, -0.406 ],
-        #                                                     std = [ 1., 1., 1. ]),
-        #                             ])
 
         self.data_train: Optional[Dataset] = None
         self.data_val: Optional[Dataset] = None
@@ -59,7 +57,7 @@ class COCODataModule(LightningDataModule):
         self.data_dir = data_dir
         self.annotations_dir = os.path.join(data_dir, "annotations")
         self.images_dir = os.path.join(data_dir, "train2014")
-        self.annotation_file = os.path.join(data_dir, "captions_train2014.json")
+        self.annotation_file = os.path.join(self.annotations_dir, "captions_train2014.json")
 
     def prepare_data(self):
         """Download data if needed.
@@ -99,7 +97,7 @@ class COCODataModule(LightningDataModule):
         differentiate whether it's called before trainer.fit()` or `trainer.test()`.
         """
 
-        tokenizer = Tokenizer(AutoTokenizer.from_pretrained(TEXT_MODEL))
+        tokenizer = Tokenizer(AutoTokenizer.from_pretrained(self.hparams.text_model), self.hparams.max_len)
         # load datasets only if they're not loaded already
         target_tfm = lambda x: tokenizer(random.choice(x))
 
@@ -108,12 +106,12 @@ class COCODataModule(LightningDataModule):
                                 transform=self.transforms,
                                 target_transform=target_tfm,
         )
-        # train_len = int(0.8*len(cap))
-        # self.data_train, self.data_val = random_split(cap, [train_len, len(cap) - train_len])
-        train_val_test_split = [x**len(dataset) for x in self.hparams.train_val_test_split]
+        train_len = int(self.hparams.train_split*len(dataset))
+        val_len = (len(dataset) - train_len) // 2
+        test_len = len(dataset) - train_len - val_len
         self.data_train, self.data_val, self.data_test = random_split(
             dataset=dataset,
-            lengths=train_val_test_split,
+            lengths=[train_len, val_len, test_len],
             # generator=torch.Generator().manual_seed(42),
         )
 
