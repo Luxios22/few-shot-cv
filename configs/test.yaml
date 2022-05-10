@@ -29,4 +29,4 @@ seed: null
 name: "default"
 
 # passing checkpoint path is necessary
-ckpt_path: ???
+ckpt_path: "logs/experiments/runs/simple_dense_net/2022-05-10_06-31-40/checkpoints/epoch_009.ckpt"

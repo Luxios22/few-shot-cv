@@ -7,6 +7,7 @@ conda install pytorch torchvision torchaudio cudatoolkit=11.3 -c pytorch -y
 pip install -r requirements.txt
 pip install tensorflow
 pip install transformers
-pip install Cython pycocotools
+# pip install Cython pycocotools # MS COCO
+pip install ftfy git+https://github.com/openai/CLIP.git # CLIP
 echo "CONDA_BASE=$(conda info --base); source $CONDA_BASE/etc/profile.d/conda.sh"
 echo "conda activate hydra"
